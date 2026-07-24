@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+
 import userEvent from '@testing-library/user-event';
 import { Modal } from '../components/Modal';
 
@@ -48,7 +49,9 @@ describe('Modal Component', () => {
     );
 
     const overlay = screen.getByRole('presentation');
-    fireEvent.click(overlay);
+    act(() => {
+      fireEvent.click(overlay);
+    });
 
     expect(mockOnClose).toHaveBeenCalled();
   });
@@ -61,7 +64,9 @@ describe('Modal Component', () => {
     );
 
     const overlay = screen.getByRole('presentation');
-    fireEvent.click(overlay);
+    act(() => {
+      fireEvent.click(overlay);
+    });
 
     expect(mockOnClose).not.toHaveBeenCalled();
   });
@@ -73,7 +78,9 @@ describe('Modal Component', () => {
       </Modal>
     );
 
-    fireEvent.keyDown(document, { key: 'Escape' });
+    act(() => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
 
     expect(mockOnClose).toHaveBeenCalled();
   });
@@ -85,7 +92,9 @@ describe('Modal Component', () => {
       </Modal>
     );
 
-    fireEvent.keyDown(document, { key: 'Escape' });
+    act(() => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
 
     expect(mockOnClose).not.toHaveBeenCalled();
   });

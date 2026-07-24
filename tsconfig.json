@@ -19,5 +19,5 @@
     "types": ["jest", "@testing-library/jest-dom"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "coverage", "**/*.test.ts", "**/*.test.tsx"]
+  "exclude": ["node_modules", "dist", "coverage"]
 }
