@@ -2,28 +2,25 @@ import React, { useState } from 'react';
 import { Modal } from './Modal';
 import type { UserContextType } from '../types/UserContextType';
 import type { UserType } from '../types/UserType';
+import './SianDevTools.css';
 
-interface SianDevToolsProps extends UserContextType {
-  /**
-   * Whether the dev tools modal is open
-   */
-  isOpen: boolean;
-  /**
-   * Callback to close the dev tools modal
-   */
-  onClose: () => void;
-}
+interface SianDevToolsProps extends UserContextType {}
+
+type TabType = 'user-editor' | 'jwt-decoder';
 
 /**
  * SianDevTools component for editing user properties in development
  */
 export const SianDevTools: React.FC<SianDevToolsProps> = ({
-  isOpen,
-  onClose,
   user,
   setUser,
 }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('user-editor');
   const [formData, setFormData] = useState<Partial<UserType>>(user || {});
+  const [jwtToken, setJwtToken] = useState('');
+  const [decodedPayload, setDecodedPayload] = useState<Record<string, any> | null>(null);
+  const [decodingError, setDecodingError] = useState('');
 
   // Convert formData whenever user changes
   React.useEffect(() => {
@@ -31,6 +28,92 @@ export const SianDevTools: React.FC<SianDevToolsProps> = ({
       setFormData(user);
     }
   }, [user, isOpen]);
+
+  // Handle keyboard shortcuts: Ctrl+Shift+O to open, Ctrl+Shift+C to close
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey) {
+        if (e.key === 'O' || e.key === 'o') {
+          e.preventDefault();
+          setIsOpen(true);
+        } else if (e.key === 'C' || e.key === 'c') {
+          e.preventDefault();
+          setIsOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  /**
+   * Decode JWT token and convert timestamps to Italian date format
+   */
+  const decodeJWT = (token: string) => {
+    try {
+      setDecodingError('');
+      const parts = token.trim().split('.');
+      
+      if (parts.length !== 3) {
+        setDecodingError('Invalid JWT format. JWT should have 3 parts separated by dots.');
+        setDecodedPayload(null);
+        return;
+      }
+
+      // Decode the payload (second part)
+      const payload = parts[1];
+      // Add padding if necessary
+      const paddedPayload = payload + '='.repeat((4 - (payload.length % 4)) % 4);
+      const decodedStr = atob(paddedPayload);
+      const parsed = JSON.parse(decodedStr);
+
+      // Convert timestamps to Italian date format
+      const processedPayload = { ...parsed };
+      
+      if (processedPayload.exp) {
+        const expDate = new Date(processedPayload.exp * 1000);
+        processedPayload.exp_formatted = expDate.toLocaleString('it-IT', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: 'UTC'
+        });
+      }
+
+      if (processedPayload.iat) {
+        const iatDate = new Date(processedPayload.iat * 1000);
+        processedPayload.iat_formatted = iatDate.toLocaleString('it-IT', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: 'UTC'
+        });
+      }
+
+      setDecodedPayload(processedPayload);
+    } catch (error) {
+      setDecodingError(`Failed to decode JWT: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setDecodedPayload(null);
+    }
+  };
+
+  const handleJwtTokenChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const token = e.target.value;
+    setJwtToken(token);
+    if (token.trim()) {
+      decodeJWT(token);
+    } else {
+      setDecodedPayload(null);
+      setDecodingError('');
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -75,7 +158,7 @@ export const SianDevTools: React.FC<SianDevToolsProps> = ({
   const handleSave = () => {
     if (formData) {
       setUser(formData as UserType);
-      onClose();
+      setIsOpen(false);
     }
   };
 
@@ -84,17 +167,36 @@ export const SianDevTools: React.FC<SianDevToolsProps> = ({
     if (user) {
       setFormData(user);
     }
-    onClose();
+    setIsOpen(false);
   };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="SIAN Dev Tools - Edit User"
+      title="SIAN Dev Tools"
       className="sian-dev-tools-modal"
     >
-      <div className="sian-dev-tools-form">
+      {/* Tab Navigation */}
+      <div className="tabs-container">
+        <div className="tabs-nav">
+          <button
+            className={`tab-button ${activeTab === 'user-editor' ? 'active' : ''}`}
+            onClick={() => setActiveTab('user-editor')}
+          >
+            User Editor
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'jwt-decoder' ? 'active' : ''}`}
+            onClick={() => setActiveTab('jwt-decoder')}
+          >
+            JWT Decoder
+          </button>
+        </div>
+
+        {/* User Editor Tab */}
+        {activeTab === 'user-editor' && (
+          <div className="sian-dev-tools-form">
         {/* Fiscal Code */}
         <div className="form-group">
           <label htmlFor="codfis">Fiscal Code</label>
@@ -263,7 +365,57 @@ export const SianDevTools: React.FC<SianDevToolsProps> = ({
             Cancel
           </button>
         </div>
+          </div>
+        )}
+
+        {/* JWT Decoder Tab */}
+        {activeTab === 'jwt-decoder' && (
+          <div className="jwt-decoder-form">
+            {/* JWT Token Input */}
+            <div className="form-group">
+              <label htmlFor="jwtToken">JWT Token</label>
+              <textarea
+                id="jwtToken"
+                value={jwtToken}
+                onChange={handleJwtTokenChange}
+                placeholder="Paste your JWT token here..."
+                rows={6}
+                className="jwt-input"
+              />
+              <p className="jwt-hint">Paste a complete JWT token (including all 3 parts separated by dots)</p>
+            </div>
+
+            {/* Error Message */}
+            {decodingError && (
+              <div className="error-message">
+                <strong>Error:</strong> {decodingError}
+              </div>
+            )}
+
+            {/* Decoded Payload */}
+            {decodedPayload && (
+              <div className="decoded-payload">
+                <h3>Decoded Payload</h3>
+                <div className="payload-content">
+                  {Object.entries(decodedPayload).map(([key, value]) => (
+                    <div key={key} className="payload-item">
+                      <div className="payload-key">{key}</div>
+                      <div className="payload-value">
+                        {typeof value === 'object' ? (
+                          <code>{JSON.stringify(value, null, 2)}</code>
+                        ) : (
+                          <code>{String(value)}</code>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );
 };
+

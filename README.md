@@ -194,3 +194,5 @@ MIT
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+TODO: fix     "prepublishOnly": "npm run clean && npm run build && npm run test:coverage"d

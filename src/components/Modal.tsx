@@ -1,5 +1,7 @@
 import React, { ReactNode, useCallback, useEffect } from 'react';
-
+import { createPortal } from 'react-dom';
+import { getPortalRoot } from '../utils/portalRoot';
+import "./Modal.css"
 export interface ModalProps {
   /**
    * Whether the modal is open
@@ -80,7 +82,7 @@ export const Modal: React.FC<ModalProps> = ({
     }
   };
 
-  return (
+  const modalContent = (
     <div
       className={`modal-overlay ${overlayClassName || ''}`}
       onClick={handleOverlayClick}
@@ -92,4 +94,6 @@ export const Modal: React.FC<ModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, getPortalRoot());
 };
