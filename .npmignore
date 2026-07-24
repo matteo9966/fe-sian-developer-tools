@@ -1,0 +1,12 @@
+src/
+coverage/
+jest.config.js
+jest.setup.ts
+rollup.config.js
+tsconfig.json
+*.test.ts
+*.test.tsx
+.gitignore
+.prettierrc
+.eslintrc
+README-instructions.md
